@@ -31,16 +31,32 @@ final class CatalogStore {
         updating = true
         defer { updating = false }
         do {
-            var request = URLRequest(url: url.appending(path: "api/v1/catalog"))
-            request.timeoutInterval = 15
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200, data.count <= 10_000_000,
-                  response.url?.host == url.host else { throw URLError(.badServerResponse) }
+            let endpoint = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == "api/v1/catalog"
+                ? url : url.appending(path: "api/v1/catalog")
+            var request = URLRequest(url: endpoint)
+            request.timeoutInterval = 30
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.waitsForConnectivity = true
+            configuration.timeoutIntervalForResource = 45
+            let session = URLSession(configuration: configuration)
+            defer { session.finishTasksAndInvalidate() }
+            let (data, response) = try await session.data(for: request)
+            guard let response = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+            guard response.statusCode == 200 else { message = "服务器返回 HTTP \(response.statusCode)，请检查地址。"; return }
+            guard data.count <= 10_000_000, response.url?.host == url.host else { throw URLError(.badServerResponse) }
             let updated = try JSONDecoder().decode(Catalog.self, from: data)
             guard Self.valid(updated) else { throw URLError(.cannotParseResponse) }
+            try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: cacheURL, options: .atomic)
             catalog = updated
             message = "已更新 · \(updated.generatedAt)"
-        } catch { message = "更新失败，保留当前离线数据。请检查服务器地址、同一 Wi-Fi 和网络权限。" }
+        } catch let error as URLError {
+            message = "网络更新失败（\(error.code.rawValue)）：\(error.localizedDescription)。请检查本地网络权限。原数据保留。"
+        } catch is DecodingError {
+            message = "服务器可连接，但数据格式不兼容。原数据保留。"
+        } catch {
+            let detail = error as NSError
+            message = "更新失败（\(detail.domain) \(detail.code)）：\(detail.localizedDescription)。原数据保留。"
+        }
     }
 }
