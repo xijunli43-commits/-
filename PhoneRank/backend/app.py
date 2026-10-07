@@ -114,6 +114,12 @@ def create_app(data_dir=None):
         html = html if html else fetch_public(url)
         parser = parse_antutu if source == 'antutu' else parse_geekbench
         candidates = parser(html,url)
+        keyword = data.get('query', '')
+        if not isinstance(keyword, str) or len(keyword) > 100: raise ValueError('搜索关键词最多 100 字符。')
+        keyword = keyword.strip().casefold()
+        if keyword:
+            candidates = [item for item in candidates if keyword in (item['name'] + ' ' + item.get('configuration', '')).casefold()]
+            if not candidates: raise ValueError('此页面没有匹配的型号。请换关键词或来源页面，未创建候选。')
         result = []
         with store.connect() as db:
             for candidate in candidates:
