@@ -59,6 +59,18 @@ class ServerTests(unittest.TestCase):
         with self.assertRaises(ValueError): parse_geekbench('<h1>Just a moment...</h1>', 'https://browser.geekbench.com/v6/cpu/1')
         with self.assertRaises(ValueError): parse_antutu('<html>Maintenance</html>', 'https://www.antutu.com/ranking')
 
+    def test_online_query_filters_candidates_without_writing_records(self):
+        html = '<h1>Example Phone</h1><div class="score-container"><div class="score">2300</div>Single-Core Score</div><div class="score-container"><div class="score">6900</div>Multi-Core Score</div>'
+        before = self.client.get('/api/v1/catalog').json
+        payload = {'source':'geekbench','url':'https://browser.geekbench.com/v6/cpu/123','html':html,'query':' EXAMPLE '}
+        result = self.post('/admin/api/collect', payload)
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(len(result.json['candidates']), 1)
+        self.assertEqual(self.client.get('/api/v1/catalog').json, before)
+        payload['query'] = 'missing model'
+        self.assertEqual(self.post('/admin/api/collect', payload).status_code, 400)
+        self.assertEqual(len(self.client.get('/admin/api/state').json['candidates']), 1)
+
     def test_invalid_nested_record_is_rejected(self):
         record = self.client.get('/admin/api/records/phones/1').json
         record['data']['antutu'] = []
