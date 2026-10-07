@@ -1,0 +1,47 @@
+name: PhoneRank
+options:
+  bundleIdPrefix: com.phonerank.local
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+targets:
+  PhoneRank:
+    type: application
+    platform: iOS
+    sources:
+      - path: PhoneRank
+        excludes: [Resources, Assets.xcassets, Info.plist, PrivacyInfo.xcprivacy]
+      - path: PhoneRank/Resources
+        buildPhase: resources
+      - path: PhoneRank/Assets.xcassets
+        buildPhase: resources
+      - path: PhoneRank/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        INFOPLIST_FILE: PhoneRank/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.phonerank.local.PhoneRank
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+  PhoneRankTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [PhoneRankTests]
+    dependencies:
+      - target: PhoneRank
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  PhoneRank:
+    build:
+      targets:
+        PhoneRank: all
+    test:
+      targets: [PhoneRankTests]

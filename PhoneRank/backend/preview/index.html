@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c2b33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="性能排行">
+<title>手机性能排行</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<style>
+  :root {
+    --bg: #f2f2f7;
+    --bg-grouped: #f2f2f7;
+    --card: #ffffff;
+    --sep: #c6c6c8;
+    --sep-light: #e5e5ea;
+    --label: #000000;
+    --label-2: #3c3c43;
+    --label-3: #8e8e93;
+    --tint: #007aff;
+    --tint-press: #005ecb;
+    --green: #34c759;
+    --orange: #ff9500;
+    --red: #ff3b30;
+    --bg-muted: #e9e9eb;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: var(--bg-grouped);
+    color: var(--label);
+    font-size: 15px;
+    line-height: 1.45;
+    overscroll-behavior-y: none;
+  }
+  a { color: var(--tint); text-decoration: none; }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; border: none; background: none; color: var(--tint); }
+  input, select { font-family: inherit; font-size: 15px; }
+
+  /* ===== Top bar ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(242,242,247,0.92);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    padding-top: var(--safe-top);
+    border-bottom: 0.5px solid var(--sep-light);
+  }
+  .topbar-row {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 44px; padding: 0 12px;
+  }
+  .topbar-title { font-size: 17px; font-weight: 600; }
+  .topbar-btn {
+    min-width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--tint); padding: 0 8px;
+  }
+  .topbar-btn svg { width: 22px; height: 22px; }
+  .topbar-btn:disabled { color: var(--label-3); }
+
+  /* Segmented tabs */
+  .tabs {
+    display: flex; margin: 0 12px 8px; background: var(--bg-muted);
+    border-radius: 9px; padding: 2px;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 6px 0; border-radius: 7px;
+    color: var(--label-2); font-weight: 500; font-size: 14px;
+  }
+  .tab.active { background: #fff; color: var(--label); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+  /* ===== Filter bar ===== */
+  .filters {
+    background: var(--bg-grouped);
+    padding: 8px 12px 10px;
+    position: sticky; top: calc(44px + var(--safe-top)); z-index: 40;
+  }
+  .search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .search-box {
+    flex: 1; display: flex; align-items: center; gap: 6px;
+    background: #fff; border-radius: 10px; padding: 7px 10px;
+  }
+  .search-box svg { width: 16px; height: 16px; color: var(--label-3); flex: none; }
+  .search-box input { flex: 1; border: none; outline: none; background: transparent; min-width: 0; }
+  .chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; padding: 5px 12px; border-radius: 14px;
+    background: #fff; color: var(--label-2); font-size: 13px;
+    border: 0.5px solid var(--sep-light);
+  }
+  .chip.active { background: var(--tint); color: #fff; border-color: var(--tint); }
+  .select-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .select-row select { width: 100%; }
+  .select-row select {
+    flex: 1; padding: 7px 8px; border-radius: 10px; border: 0.5px solid var(--sep-light);
+    background: #fff; color: var(--label); min-width: 0;
+  }
+
+  /* ===== List ===== */
+  .list-wrap { padding: 8px 12px calc(120px + var(--safe-bottom)); }
+  .list-meta { font-size: 12px; color: var(--label-3); padding: 4px 4px 8px; }
+  .card {
+    background: var(--card); border-radius: 12px; padding: 12px;
+    margin-bottom: 10px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .rank-badge {
+    flex: none; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg-muted); color: var(--label-2);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px;
+  }
+  .rank-badge.top1 { background: #ffd60a; color: #000; }
+  .rank-badge.top2 { background: #c7c7cc; color: #000; }
+  .rank-badge.top3 { background: #ffb340; color: #000; }
+  .card-main { flex: 1; min-width: 0; }
+  .card-title { font-size: 16px; font-weight: 600; }
+  .card-sub { font-size: 12px; color: var(--label-3); margin-top: 2px; }
+  .card-stats { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+  .stat { font-size: 12px; color: var(--label-2); }
+  .stat b { color: var(--label); font-weight: 600; }
+  .badge-ios, .badge-android {
+    display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .badge-ios { background: #000; color: #fff; }
+  .badge-android { background: #34c759; color: #fff; }
+  .compare-check {
+    flex: none; align-self: center; width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid var(--sep); display: flex; align-items: center; justify-content: center;
+    color: transparent;
+  }
+  .compare-check.checked { background: var(--tint); border-color: var(--tint); color: #fff; }
+  .compare-check svg { width: 16px; height: 16px; }
+  .gb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 8px; }
+  .gb-cell { background: var(--bg-muted); border-radius: 8px; padding: 6px 8px; min-width: 0; }
+  .gb-label { display: block; font-size: 10px; color: var(--label-3); margin-bottom: 2px; }
+  .gb-val { display: block; font-size: 12px; color: var(--label); word-break: break-word; line-height: 1.35; }
+  .gb-val b { font-weight: 600; }
+  .gb-sample { color: var(--label-3); font-size: 10px; }
+  .badge-chip { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--bg-muted); color: var(--label-2); margin-left: 6px; vertical-align: 1px; }
+  .badge-warn { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #fff3cd; color: #664d03; border: 1px solid #ffc107; margin-left: 6px; vertical-align: 1px; }
+
+  .sentinel { height: 20px; }
+  .end-note { text-align: center; color: var(--label-3); font-size: 12px; padding: 16px 0; }
+
+  /* ===== Floating compare bar ===== */
+  .compare-bar {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom));
+    background: #1c2b33; color: #fff; border-radius: 14px; padding: 10px 12px;
+    display: none; align-items: center; gap: 10px; z-index: 60;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  }
+  .compare-bar.show { display: flex; }
+  .compare-bar-names { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .compare-bar-names .chip-mini {
+    display: inline-block; background: rgba(255,255,255,0.15); border-radius: 8px;
+    padding: 2px 8px; margin-right: 4px; font-size: 11px;
+  }
+  .compare-bar-btn {
+    background: var(--tint); color: #fff; border-radius: 10px; padding: 7px 14px; font-weight: 600; font-size: 14px;
+  }
+  .compare-bar-clear { color: #ff9f0a; padding: 7px 6px; font-size: 13px; }
+
+  /* ===== Detail page ===== */
+  .detail-wrap { padding: 12px 12px calc(40px + var(--safe-bottom)); }
+  .detail-hero {
+    background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 12px;
+  }
+  .detail-name { font-size: 20px; font-weight: 700; }
+  .detail-sub { color: var(--label-3); font-size: 13px; margin-top: 4px; }
+  .section {
+    background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+  }
+  .section h3 {
+    margin: 0 0 8px; font-size: 13px; color: var(--label-3); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .kv { display: flex; justify-content: space-between; padding: 6px 0; border-top: 0.5px solid var(--sep-light); font-size: 14px; }
+  .kv:first-of-type { border-top: none; }
+  .kv .k { color: var(--label-3); flex: 0 0 38%; }
+  .kv .v { color: var(--label); text-align: right; flex: 1; word-break: break-word; }
+  .src-list { margin: 6px 0 0; padding-left: 18px; }
+  .src-list li { margin: 4px 0; font-size: 13px; word-break: break-all; }
+  .note-box { font-size: 12px; color: var(--label-3); background: var(--bg-muted); border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+
+  /* ===== Compare table ===== */
+  .warn-banner {
+    background: #fff3cd; border: 1px solid #ffc107; color: #664d03;
+    padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 12px;
+  }
+  table.cmp {
+    width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;
+    font-size: 13px;
+  }
+  table.cmp th, table.cmp td {
+    padding: 8px 8px; border-bottom: 0.5px solid var(--sep-light); text-align: left; vertical-align: top;
+    word-break: break-word;
+  }
+  table.cmp thead th { background: var(--bg-muted); font-weight: 600; position: sticky; top: 0; }
+  table.cmp td.dim { color: var(--label-3); }
+  table.cmp tr.dim-row td:first-child { color: var(--label-3); font-weight: 600; background: var(--bg-muted); }
+  .better { color: var(--green); font-weight: 700; }
+  .cmp-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ===== About ===== */
+  .about p, .about li { font-size: 14px; color: var(--label-2); }
+  .about ol, .about ul { padding-left: 20px; }
+  .step-num {
+    display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: var(--tint);
+    color: #fff; text-align: center; line-height: 20px; font-size: 12px; margin-right: 6px;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); color: #fff; padding: 8px 16px; border-radius: 18px;
+    font-size: 13px; z-index: 100; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (min-width: 720px) {
+    body { font-size: 16px; }
+    .select-row { flex-direction: row; }
+    .select-row select { flex: 1; width: auto; }
+    .list-wrap, .detail-wrap, .filters, .topbar-row { max-width: 760px; margin-left: auto; margin-right: auto; }
+    .filters { left: 0; right: 0; }
+    .compare-bar { max-width: 760px; left: 50%; transform: translateX(-50%); right: auto; width: 760px; }
+  }
+</style>
+<style>
+body{background:radial-gradient(ellipse at 20% 0%,#d8f3f5 0%,transparent 50%),#f2f6f8}
+.topbar{background:rgba(250,253,255,.66);backdrop-filter:blur(28px) saturate(150%);border-bottom:1px solid #fff9}
+.tabs{background:#d9e7ed88;border-radius:24px;padding:4px}.tab{border-radius:22px;min-height:40px}
+.filters{background:#f2f6f8c9;backdrop-filter:blur(22px)}.search-box{border:1px solid #fff;border-radius:22px;min-height:44px}
+.chip{min-height:36px;border-radius:20px}.card,.section{border-radius:20px;border:1px solid #e3ecf0;box-shadow:none}
+.compare-bar{background:#ffffffb8;backdrop-filter:blur(30px) saturate(160%);border:1px solid #fff;border-radius:28px;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));width:auto}
+button,select{min-height:44px}.card-title{font-weight:650}a:focus-visible,button:focus-visible{outline:3px solid #007aff;outline-offset:3px}
+@media(prefers-reduced-transparency:reduce){.topbar,.filters,.compare-bar{background:#f8fafc;backdrop-filter:none}}
+</style></head>
+<body>
+<!-- body: rendered by JS -->
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+<!-- APP_JS -->
+<script src="data.js"></script>
+<script>
+'use strict';
+/* ============ helpers ============ */
+const DATA = window.PHONE_DATA;
+const $ = (sel) => document.querySelector(sel);
+const root = $('#root');
+
+function fmt(v) {
+  if (v === null || v === undefined || v === '') return '未查证';
+  if (v === '未查证') return '未查证';
+  if (typeof v === 'number') return v.toLocaleString('zh-CN');
+  return String(v);
+}
+/* numeric display: integers with thousand separators; decimals kept as-is */
+function fmtNum(v) {
+  if (v === null || v === undefined || v === '') return '未查证';
+  if (typeof v === 'number') {
+    return Number.isInteger(v) ? v.toLocaleString('zh-CN') : v.toString();
+  }
+  return String(v);
+}
+function isNum(v) { return typeof v === 'number' && !isNaN(v); }
+function getPhone(id) { return DATA.phones.find(p => String(p.id) === String(id)); }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+/* ============ state ============ */
+const state = {
+  tab: 'phones',         // phones | chips
+  platform: 'all',       // all | android | ios
+  brand: 'all',
+  query: '',
+  sort: 'antutu_total',
+  chipCategory: 'all',   // all | phone | apple-a | apple-m
+  page: 1,
+  pageSize: 30,
+  compare: [],           // phone ids
+};
+
+const PHONE_SORTS = [
+  ['antutu_total', '安兔兔总分'],
+  ['antutu_cpu',   '安兔兔 CPU'],
+  ['antutu_gpu',   '安兔兔 GPU'],
+  ['antutu_mem',   '安兔兔 MEM'],
+  ['antutu_ux',    '安兔兔 UX'],
+  ['gb6_single',   'GB6 单核'],
+  ['gb6_multi',    'GB6 多核'],
+  ['gb7_single',   'GB7 单核'],
+  ['gb7_multi',    'GB7 多核'],
+  ['body_weight',  '机身重量（轻→重）'],
+  ['battery_capacity', '电池容量'],
+  ['display_size', '屏幕尺寸'],
+  ['display_refresh', '屏幕刷新率'],
+];
+const CHIP_SORTS = [
+  ['total', '安兔兔总分'],
+  ['cpu', '安兔兔 CPU'],
+  ['gpu', '安兔兔 GPU'],
+  ['gb6_single', 'GB6 单核'],
+  ['gb6_multi', 'GB6 多核'],
+  ['gb7_single', 'GB7 单核'],
+  ['gb7_multi', 'GB7 多核'],
+  ['release', '发布时间（新→旧）'],
+  ['process', '工艺节点（新→旧）'],
+];
+
+function sortValue(p, key) {
+  switch (key) {
+    case 'antutu_total': return p.antutu.total;
+    case 'antutu_cpu':   return p.antutu.cpu;
+    case 'antutu_gpu':   return p.antutu.gpu;
+    case 'antutu_mem':   return p.antutu.mem;
+    case 'antutu_ux':    return p.antutu.ux;
+    case 'body_weight':  return p.body.weight;
+    case 'battery_capacity': return p.battery.capacity;
+    case 'display_size': {
+      const s = p.display.size;
+      if (typeof s === 'number') return s;
+      const m = String(s).match(/([\d.]+)/);
+      return m ? parseFloat(m[1]) : null;
+    }
+    case 'display_refresh': return p.display.refresh;
+    case 'gb6_single': return p.geekbench.gb6.single;
+    case 'gb6_multi':  return p.geekbench.gb6.multi;
+    case 'gb7_single': return p.geekbench.gb7.single;
+    case 'gb7_multi':  return p.geekbench.gb7.multi;
+    default: return null;
+  }
+}
+
+function filteredPhones() {
+  let list = DATA.phones.slice();
+  if (state.platform !== 'all') list = list.filter(p => p.platform === state.platform);
+  if (state.brand !== 'all') list = list.filter(p => p.brand === state.brand);
+  if (state.query) {
+    const q = state.query.trim().toLowerCase();
+    if (q) {
+      list = list.filter(p => {
+        const hay = [p.brand, p.name, p.soc && p.soc.name, p.soc && p.soc.alias]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+  }
+  const key = state.sort;
+  const asc = (key === 'body_weight'); // weight ascending (lighter better)
+  list.sort((a, b) => {
+    let va = sortValue(a, key), vb = sortValue(b, key);
+    if (!isNum(va) && !isNum(vb)) return 0;
+    if (!isNum(va)) return 1;   // nulls sink
+    if (!isNum(vb)) return -1;
+    return asc ? va - vb : vb - va;
+  });
+  return list;
+}
+
+function processNodeNm(c) {
+  const t = c.process;
+  if (!t || t === '未查证') return null;
+  const m = String(t).match(/(\d+(?:\.\d+)?)\s*nm/i);
+  return m ? parseFloat(m[1]) : null;
+}
+function chipSortVal(c) {
+  const at = c.antutu || {};
+  switch (state.sort) {
+    case 'chips_cpu': return isNum(at.cpu) ? at.cpu : null;
+    case 'chips_gpu': return isNum(at.gpu) ? at.gpu : null;
+    case 'chips_gb6_single': return (c.gb6 && isNum(c.gb6.single)) ? c.gb6.single : null;
+    case 'chips_gb6_multi':  return (c.gb6 && isNum(c.gb6.multi)) ? c.gb6.multi : null;
+    case 'chips_gb7_single': return (c.gb7 && isNum(c.gb7.single)) ? c.gb7.single : null;
+    case 'chips_gb7_multi':  return (c.gb7 && isNum(c.gb7.multi)) ? c.gb7.multi : null;
+    case 'chips_release': return c.releaseDate || null;   // string desc
+    case 'chips_process': return processNodeNm(c);       // number asc (smaller=better)
+    case 'chips_total':
+    default: return isNum(at.total) ? at.total : null;
+  }
+}
+function getChip(id) { return DATA.chips.find(c => String(c.id) === String(id)); }
+function filteredChips() {
+  let list = DATA.chips.slice();
+  if (state.chipCategory && state.chipCategory !== 'all') {
+    list = list.filter(c => c.category === state.chipCategory);
+  }
+  if (state.query) {
+    const q = state.query.trim().toLowerCase();
+    if (q) {
+      list = list.filter(c => [c.name, c.vendor, c.process].join(' ').toLowerCase().indexOf(q) !== -1);
+    }
+  }
+  const asc = (state.sort === 'chips_process'); // smaller nm = newer/better
+  list.sort((a, b) => {
+    const va = chipSortVal(a), vb = chipSortVal(b);
+    const vaNum = isNum(va), vbNum = isNum(vb);
+    // releaseDate is a string
+    if (state.sort === 'chips_release') {
+      if (!va && !vb) return 0;
+      if (!va) return 1;
+      if (!vb) return -1;
+      return String(vb).localeCompare(String(va)); // newest first
+    }
+    if (!vaNum && !vbNum) return 0;
+    if (!vaNum) return 1;
+    if (!vbNum) return -1;
+    return asc ? va - vb : vb - va;
+  });
+  return list;
+}
+
+function brandList() {
+  const brands = {};
+  DATA.phones.forEach(p => { brands[p.brand] = (brands[p.brand] || 0) + 1; });
+  return Object.entries(brands).sort((a,b) => b[1]-a[1]).map(([b]) => b);
+}
+
+/* ============ SVG icons ============ */
+const ICONS = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  chip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><line x1="9" y1="2" x2="9" y2="6"/><line x1="15" y1="2" x2="15" y2="6"/><line x1="9" y1="18" x2="9" y2="22"/><line x1="15" y1="18" x2="15" y2="22"/><line x1="2" y1="9" x2="6" y2="9"/><line x1="2" y1="15" x2="6" y2="15"/><line x1="18" y1="9" x2="22" y2="9"/><line x1="18" y1="15" x2="22" y2="15"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+};
+
+/* ============ router ============ */
+function parseHash() {
+  const h = location.hash || '#/';
+  const parts = h.replace(/^#\//, '').split('/');
+  return parts;
+}
+function currentView() {
+  const parts = parseHash();
+  if (parts[0] === '' || parts[0] === 'phones') return 'phones';
+  if (parts[0] === 'chips') return 'chips';
+  if (parts[0] === 'phone') return 'phoneDetail';
+  if (parts[0] === 'chip') return 'chipDetail';
+  if (parts[0] === 'compare') return 'compare';
+  if (parts[0] === 'about') return 'about';
+  return 'phones';
+}
+
+function render() {
+  const view = currentView();
+  if (view === 'phones') state.tab = 'phones';
+  if (view === 'chips') state.tab = 'chips';
+  state.page = 1;
+  renderTopbar(view);
+  if (view === 'phones') renderPhoneList();
+  else if (view === 'chips') renderChipList();
+  else if (view === 'phoneDetail') {
+    const id = parseHash()[1];
+    renderPhoneDetail(id);
+  }
+  else if (view === 'chipDetail') {
+    const id = parseHash()[1];
+    renderChipDetail(id);
+  }
+  else if (view === 'compare') renderCompare();
+  else if (view === 'about') renderAbout();
+  renderCompareBar();
+  window.scrollTo(0, 0);
+}
+
+function renderTopbar(view) {
+  const backViews = ['phoneDetail', 'chipDetail', 'compare', 'about'];
+  let backBtn = '';
+  if (backViews.includes(view)) {
+    backBtn = '<button class="topbar-btn" id="backBtn" aria-label="返回">' + ICONS.back + '</button>';
+  }
+  let title = '手机性能排行';
+  let tabsHtml = '';
+  if (view === 'phones' || view === 'chips') {
+    tabsHtml = `
+      <div class="tabs">
+        <button class="tab ${state.tab==='phones'?'active':''}" data-goto="#/">手机榜</button>
+        <button class="tab ${state.tab==='chips'?'active':''}" data-goto="#/chips">芯片榜</button>
+        <button class="tab" data-goto="#/about">关于</button>
+      </div>`;
+  }
+  root.innerHTML = `
+    <header class="topbar">
+      <div class="topbar-row">
+        ${backBtn}
+        <div class="topbar-title">${escapeHtml(title)}</div>
+        <button class="topbar-btn" data-goto="#/about" aria-label="关于">${ICONS.info}</button>
+      </div>
+      ${tabsHtml}
+    </header>
+    <main id="app"></main>
+  `;
+  // wire up
+  const backEl = $('#backBtn');
+  if (backEl) backEl.addEventListener('click', () => { history.back(); });
+  root.querySelectorAll('[data-goto]').forEach(b => {
+    b.addEventListener('click', () => { location.hash = b.getAttribute('data-goto'); });
+  });
+}
+
+/* ============ phone list ============ */
+let io = null;
+function renderPhoneList() {
+  const app = $('#app');
+  const brands = brandList();
+  const platChips = [
+    ['all', '全部'],
+    ['android', '安卓'],
+    ['ios', 'iPhone'],
+  ].map(([v,l]) => `<button class="chip ${state.platform===v?'active':''}" data-platform="${v}">${l}</button>`).join('');
+  const brandOpts = ['<option value="all">全部品牌</option>']
+    .concat(brands.map(b => `<option value="${escapeHtml(b)}" ${state.brand===b?'selected':''}>${escapeHtml(b)}</option>`)).join('');
+  const sortOpts = PHONE_SORTS.map(([v,l]) => `<option value="${v}" ${state.sort===v?'selected':''}>${l}</option>`).join('');
+
+  app.innerHTML = `
+    <div class="filters">
+      <div class="search-row">
+        <div class="search-box">
+          ${ICONS.search}
+          <input id="q" type="search" placeholder="搜索机型 / 品牌 / SoC" value="${escapeHtml(state.query)}">
+        </div>
+      </div>
+      <div class="chip-row">${platChips}</div>
+      <div class="select-row">
+        <select id="brandSel">${brandOpts}</select>
+        <select id="sortSel">${sortOpts}</select>
+      </div>
+    </div>
+    <div class="list-wrap">
+      <div class="list-meta" id="meta"></div>
+      <div id="list"></div>
+      <div class="sentinel" id="sentinel"></div>
+    </div>
+  `;
+
+  // wire filters
+  $('#q').addEventListener('input', (e) => { state.query = e.target.value; state.page = 1; refillList(true); });
+  $('#brandSel').addEventListener('change', (e) => { state.brand = e.target.value; state.page = 1; refillList(true); });
+  $('#sortSel').addEventListener('change', (e) => { state.sort = e.target.value; state.page = 1; refillList(true); });
+  app.querySelectorAll('[data-platform]').forEach(c => {
+    c.addEventListener('click', () => { state.platform = c.getAttribute('data-platform'); state.page = 1; renderPhoneList(); });
+  });
+
+  refillList(true);
+}
+
+function refillList(reset) {
+  const list = filteredPhones();
+  const meta = $('#meta');
+  if (meta) meta.textContent = `共 ${list.length} 款机型（数据：安兔兔 2026 年 8 月榜）`;
+  const box = $('#list');
+  if (!box) return;
+  if (reset) { box.innerHTML = ''; state.page = 1; }
+  appendPage(list);
+}
+
+function appendPage(all) {
+  const box = $('#list');
+  const start = (state.page - 1) * state.pageSize;
+  const end = state.page * state.pageSize;
+  const slice = all.slice(start, end);
+  const html = slice.map(phoneCard).join('');
+  box.insertAdjacentHTML('beforeend', html);
+  // attach compare toggles
+  box.querySelectorAll('[data-toggle-compare]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCompare(btn.getAttribute('data-toggle-compare'));
+    });
+  });
+  box.querySelectorAll('[data-goto-detail]').forEach(c => {
+    c.style.cursor = 'pointer';
+    c.addEventListener('click', () => { location.hash = '#/phone/' + c.getAttribute('data-goto-detail'); });
+  });
+  // end note
+  const sentinel = $('#sentinel');
+  if (end >= all.length) {
+    if (sentinel) sentinel.innerHTML = '<div class="end-note">已加载全部 ' + all.length + ' 款</div>';
+  } else {
+    if (sentinel) sentinel.innerHTML = '<div class="end-note">下拉加载更多…</div>';
+  }
+  setupObserver(all);
+}
+
+function phoneCard(p) {
+  const inCompare = state.compare.some(id => String(id) === String(p.id));
+  const rank = isNum(p.rank) ? p.rank : '—';
+  const platBadge = p.platform === 'ios'
+    ? '<span class="badge-ios">iOS</span>'
+    : '<span class="badge-android">安卓</span>';
+  const at = p.antutu && isNum(p.antutu.total) ? p.antutu.total.toLocaleString('zh-CN') : '未查证';
+  const gb6 = p.geekbench && p.geekbench.gb6;
+  const gb6Txt = (gb6 && isNum(gb6.single)) ? `${gb6.single} / ${gb6.multi}` : '未查证';
+  const w = isNum(p.body.weight) ? p.body.weight + 'g' : '未查证';
+  const cap = isNum(p.battery.capacity) ? p.battery.capacity + 'mAh' : '未查证';
+  return `
+  <div class="card" data-goto-detail="${p.id}">
+    <div class="rank-badge ${rank<=3?'top'+rank:''}">${rank}</div>
+    <div class="card-main">
+      <div class="card-title">${escapeHtml(p.name)}${platBadge}</div>
+      <div class="card-sub">${escapeHtml(p.brand)} · ${escapeHtml(p.releaseDate || '未查证')} · ${escapeHtml(p.soc ? p.soc.name : '未查证')}</div>
+      <div class="card-stats">
+        <span class="stat">安兔兔 <b>${at}</b></span>
+        <span class="stat">GB6 <b>${gb6Txt}</b></span>
+        <span class="stat">重 <b>${w}</b></span>
+        <span class="stat">电池 <b>${cap}</b></span>
+      </div>
+    </div>
+    <button class="compare-check ${inCompare?'checked':''}" data-toggle-compare="${p.id}" aria-label="加入对比">
+      ${ICONS.check}
+    </button>
+  </div>`;
+}
+
+function setupObserver(all) {
+  if (io) { io.disconnect(); io = null; }
+  const sentinel = $('#sentinel');
+  if (!sentinel) return;
+  io = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        const end = state.page * state.pageSize;
+        if (end < all.length) {
+          state.page++;
+          appendPage(all);
+        }
+      }
+    });
+  }, { rootMargin: '200px 0px' });
+  io.observe(sentinel);
+}
+
+/* ============ chip list ============ */
+function renderChipList() {
+  if (!state.sort || state.sort.indexOf('chips_') !== 0) state.sort = 'chips_total';
+  const app = $('#app');
+  const svMap = { total:'chips_total', cpu:'chips_cpu', gpu:'chips_gpu', gb6_single:'chips_gb6_single', gb6_multi:'chips_gb6_multi', gb7_single:'chips_gb7_single', gb7_multi:'chips_gb7_multi', release:'chips_release', process:'chips_process' };
+  const sortOpts = CHIP_SORTS.map(([v,l]) => {
+    const sv = svMap[v] || 'chips_total';
+    return `<option value="${sv}" ${state.sort===sv?'selected':''}>${l}</option>`;
+  }).join('');
+  const catChips = [
+    ['all', '全部'],
+    ['phone', '手机 SoC'],
+    ['apple-a', 'Apple A 系列'],
+    ['apple-m', 'Apple M 系列'],
+  ].map(([v,l]) => `<button class="chip ${state.chipCategory===v?'active':''}" data-ccat="${v}">${l}</button>`).join('');
+  app.innerHTML = `
+    <div class="filters">
+      <div class="search-row">
+        <div class="search-box">
+          ${ICONS.search}
+          <input id="q" type="search" placeholder="搜索芯片 / 厂商 / 工艺" value="${escapeHtml(state.query)}">
+        </div>
+      </div>
+      <div class="chip-row">${catChips}</div>
+      <div class="select-row">
+        <select id="sortSel" aria-label="排序">${sortOpts}</select>
+      </div>
+    </div>
+    <div class="list-wrap">
+      <div class="note-box" style="margin:0 0 10px">Geekbench 仅测 CPU 成绩；安兔兔 SoC 榜为 CPU+GPU 综合分；GB6/GB7 典型值由相同 SoC 机型已核验成绩取中位数（括号内为样本机型数）；Geekbench 6 与 Geekbench 7 不可直接互比；Apple M 系列适用 Mac/iPad，非手机芯片。</div>
+      <div class="list-meta" id="meta"></div>
+      <div id="list"></div>
+      <div class="sentinel" id="sentinel"></div>
+    </div>
+  `;
+  $('#q').addEventListener('input', (e) => { state.query = e.target.value; state.page = 1; refillChips(true); });
+  $('#sortSel').addEventListener('change', (e) => { state.sort = e.target.value; state.page = 1; refillChips(true); });
+  app.querySelectorAll('[data-ccat]').forEach(b => {
+    b.addEventListener('click', () => { state.chipCategory = b.getAttribute('data-ccat'); state.page = 1; renderChipList(); });
+  });
+  refillChips(true);
+}
+function refillChips(reset) {
+  const list = filteredChips();
+  const meta = $('#meta');
+  if (meta) meta.textContent = `共 ${list.length} / ${DATA.chips.length} 款芯片`;
+  const box = $('#list');
+  if (!box) return;
+  if (reset) box.innerHTML = '';
+  const end = state.page * state.pageSize;
+  const slice = list.slice(0, end);
+  box.innerHTML = slice.map(chipCard).join('');
+  box.querySelectorAll('[data-goto-chip]').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => { location.hash = '#/chip/' + el.getAttribute('data-goto-chip'); });
+  });
+  const sentinel = $('#sentinel');
+  if (end >= list.length) {
+    if (sentinel) sentinel.innerHTML = '<div class="end-note">已加载全部 ' + list.length + ' 款</div>';
+  } else {
+    if (sentinel) sentinel.innerHTML = '<div class="end-note">下拉加载更多…</div>';
+  }
+  setupObserver(list);
+}
+function gbLine(gb) {
+  gb = gb || {};
+  const has = isNum(gb.single) && isNum(gb.multi);
+  const samples = isNum(gb.samples) ? gb.samples : 0;
+  if (has) return `${gb.single.toLocaleString('zh-CN')} / ${gb.multi.toLocaleString('zh-CN')}<span class="gb-sample">（${samples}样本）</span>`;
+  return '未查证';
+}
+function chipBadge(c) {
+  if (c.category === 'apple-m') return '<span class="badge-chip">Mac/iPad</span>';
+  if (c.category === 'apple-a') return '<span class="badge-chip">iPhone/iPad</span>';
+  return '<span class="badge-chip badge-android">手机</span>';
+}
+function chipStatusBadge(c) {
+  if (c.status && c.status !== '已发布') return `<span class="badge-warn">${escapeHtml(c.status)}</span>`;
+  return '';
+}
+function chipCard(c) {
+  const at = c.antutu || {};
+  const g = c.gb6 || {};
+  const gb7 = c.gb7 || {};
+  const cpu = c.cpu || {};
+  const gb6v = gbLine(g);
+  const gb7v = gbLine(gb7);
+  const atTotal = isNum(at.total) ? at.total.toLocaleString('zh-CN') : '未查证';
+  const atCpu = isNum(at.cpu) ? at.cpu.toLocaleString('zh-CN') : '未查证';
+  const atGpu = isNum(at.gpu) ? at.gpu.toLocaleString('zh-CN') : '未查证';
+  return `
+  <div class="card" data-goto-chip="${escapeHtml(c.id)}">
+    <div class="card-main" style="flex:1">
+      <div class="card-title">${escapeHtml(c.name)} ${chipBadge(c)} ${chipStatusBadge(c)}</div>
+      <div class="card-sub">${escapeHtml(c.vendor)} · ${escapeHtml(c.process || '未查证')}${c.releaseDate ? ' · ' + escapeHtml(c.releaseDate) : ''}</div>
+      <div class="card-stats">
+        <span class="stat">安兔兔总分 <b>${atTotal}</b></span>
+        <span class="stat">CPU <b>${atCpu}</b></span>
+        <span class="stat">GPU <b>${atGpu}</b></span>
+      </div>
+      <div class="gb-grid">
+        <div class="gb-cell"><span class="gb-label">GB6 单/多核</span><span class="gb-val">${gb6v}</span></div>
+        <div class="gb-cell"><span class="gb-label">GB7 单/多核</span><span class="gb-val">${gb7v}</span></div>
+      </div>
+      <div class="card-sub" style="margin-top:4px">${escapeHtml(cpu.cores || '未查证')}</div>
+    </div>
+  </div>`;
+}
+
+/* ============ chip detail ============ */
+function renderChipDetail(id) {
+  const c = getChip(id);
+  const app = $('#app');
+  if (!c) {
+    app.innerHTML = '<div class="detail-wrap"><div class="section">未找到该芯片</div></div>';
+    return;
+  }
+  const at = c.antutu || {};
+  const cpu = c.cpu || {};
+  const gpu = c.gpu || {};
+  const mem = c.memory || {};
+  const g = c.gb6 || {};
+  const gb7 = c.gb7 || {};
+  const catLabel = c.category === 'apple-m' ? 'Apple M 系列（Mac/iPad）' : (c.category === 'apple-a' ? 'Apple A 系列（iPhone/iPad）' : '手机 SoC');
+  const applyTxt = Array.isArray(c.appliesTo) && c.appliesTo.length ? c.appliesTo.join(' / ') : '未查证';
+  const gpuFeatures = (typeof gpu.features === 'string') ? gpu.features : (gpu.features == null ? '未查证' : String(gpu.features));
+  const gpuRay = (gpu.raytracing === true) ? '支持' : (gpu.raytracing === false ? '不支持' : '未查证');
+  const npu = c.npu ? String(c.npu) : '未查证';
+  const cache = c.cache ? String(c.cache) : '未查证';
+  const devices = (c.devices || []).length ? '<ul>' + c.devices.map(d => `<li>${escapeHtml(d)}</li>`).join('') + '</ul>' : '<div class="kv"><span class="v">未查证</span></div>';
+  const srcs = (c.sources || []).map(s => `<li><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label)}</a></li>`).join('');
+  const gb6Srcs = (g.sources || []).filter(Boolean).map(u => `<li><a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a></li>`).join('');
+  const gb7Srcs = (gb7.sources || []).filter(Boolean).map(u => `<li><a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a></li>`).join('');
+
+  app.innerHTML = `
+  <div class="detail-wrap">
+    <div class="detail-hero">
+      <div class="detail-name">${escapeHtml(c.name)} ${chipStatusBadge(c)}</div>
+      <div class="detail-sub">${escapeHtml(c.vendor)} · ${escapeHtml(catLabel)} · 适用：${escapeHtml(applyTxt)}${c.releaseDate ? ' · 发布 ' + escapeHtml(c.releaseDate) : ''}</div>
+    </div>
+
+    <div class="section">
+      <h3>基本规格</h3>
+      <div class="kv"><span class="k">状态</span><span class="v">${escapeHtml(c.status || '未查证')}</span></div>
+      <div class="kv"><span class="k">工艺</span><span class="v">${escapeHtml(c.process || '未查证')}</span></div>
+      <div class="kv"><span class="k">CPU 核心</span><span class="v">${escapeHtml(cpu.cores || '未查证')}</span></div>
+      <div class="kv"><span class="k">CPU 架构</span><span class="v">${escapeHtml(cpu.arch || '未查证')}</span></div>
+      <div class="kv"><span class="k">CPU 频率</span><span class="v">${isNum(cpu.freqGHz) ? cpu.freqGHz + ' GHz' : '未查证'}</span></div>
+      <div class="kv"><span class="k">GPU 核心</span><span class="v">${isNum(gpu.cores) ? gpu.cores + ' 核' : '未查证'}</span></div>
+      <div class="kv"><span class="k">GPU 光追</span><span class="v">${gpuRay}</span></div>
+      <div class="kv"><span class="k">GPU 特性</span><span class="v">${escapeHtml(gpuFeatures)}</span></div>
+      <div class="kv"><span class="k">NPU / AI</span><span class="v">${escapeHtml(npu)}</span></div>
+      <div class="kv"><span class="k">内存带宽</span><span class="v">${isNum(mem.bandwidthGBs) ? mem.bandwidthGBs + ' GB/s' : '未查证'}</span></div>
+      <div class="kv"><span class="k">最大内存</span><span class="v">${isNum(mem.maxGB) ? mem.maxGB + ' GB' : '未查证'}</span></div>
+      <div class="kv"><span class="k">内存类型</span><span class="v">${escapeHtml(mem.type || '未查证')}</span></div>
+      <div class="kv"><span class="k">缓存</span><span class="v">${escapeHtml(cache)}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>跑分</h3>
+      <div class="kv"><span class="k">安兔兔总分</span><span class="v">${isNum(at.total) ? at.total.toLocaleString('zh-CN') : '未查证'}</span></div>
+      <div class="kv"><span class="k">安兔兔 CPU</span><span class="v">${isNum(at.cpu) ? at.cpu.toLocaleString('zh-CN') : '未查证'}</span></div>
+      <div class="kv"><span class="k">安兔兔 GPU</span><span class="v">${isNum(at.gpu) ? at.gpu.toLocaleString('zh-CN') : '未查证'}</span></div>
+      <div class="kv"><span class="k">GB6 单核</span><span class="v">${isNum(g.single) ? g.single.toLocaleString('zh-CN') : '未查证'}${isNum(g.samples) && g.samples>0 ? '（'+g.samples+' 样本）' : ''}</span></div>
+      <div class="kv"><span class="k">GB6 多核</span><span class="v">${isNum(g.multi) ? g.multi.toLocaleString('zh-CN') : '未查证'}</span></div>
+      <div class="kv"><span class="k">GB7 单核</span><span class="v">${isNum(gb7.single) ? gb7.single.toLocaleString('zh-CN') : '未查证'}${isNum(gb7.samples) && gb7.samples>0 ? '（'+gb7.samples+' 样本）' : ''}</span></div>
+      <div class="kv"><span class="k">GB7 多核</span><span class="v">${isNum(gb7.multi) ? gb7.multi.toLocaleString('zh-CN') : '未查证'}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>代表设备</h3>
+      ${devices}
+    </div>
+
+    ${c.notes ? `<div class="note-box">备注：${escapeHtml(c.notes)}</div>` : ''}
+
+    <div class="section">
+      <h3>数据来源</h3>
+      <ul class="src-list">${srcs || '<li>未查证</li>'}</ul>
+      ${gb6Srcs ? `<h3 style="margin-top:10px">GB6 样本来源</h3><ul class="src-list">${gb6Srcs}</ul>` : ''}
+      ${gb7Srcs ? `<h3 style="margin-top:10px">GB7 样本来源</h3><ul class="src-list">${gb7Srcs}</ul>` : ''}
+    </div>
+  </div>
+  `;
+}
+
+/* ============ compare state ============ */
+function toggleCompare(id) {
+  id = String(id);
+  const idx = state.compare.findIndex(x => String(x) === id);
+  if (idx >= 0) {
+    state.compare.splice(idx, 1);
+    toast('已移出对比');
+  } else {
+    if (state.compare.length >= 3) {
+      toast('最多对比 3 款机型');
+      return;
+    }
+    state.compare.push(id);
+    toast('已加入对比');
+  }
+  // refresh visible checkmarks + bar
+  document.querySelectorAll(`[data-toggle-compare="${id}"]`).forEach(b => {
+    b.classList.toggle('checked', state.compare.some(x => String(x) === id));
+  });
+  renderCompareBar();
+}
+
+function renderCompareBar() {
+  let bar = $('#compareBar');
+  if (state.compare.length === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+  const names = state.compare.map(id => {
+    const p = getPhone(id);
+    return p ? `<span class="chip-mini">${escapeHtml(p.name)}</span>` : '';
+  }).join('');
+  if (!bar) {
+    const div = document.createElement('div');
+    div.id = 'compareBar';
+    div.className = 'compare-bar show';
+    document.body.appendChild(div);
+    bar = div;
+  }
+  bar.classList.add('show');
+  bar.innerHTML = `
+    <div class="compare-bar-names">${names}</div>
+    <button class="compare-bar-clear" id="cmpClear">清空</button>
+    <button class="compare-bar-btn" data-goto-cmp>对比 (${state.compare.length})</button>
+  `;
+  bar.querySelector('#cmpClear').addEventListener('click', () => {
+    state.compare = [];
+    document.querySelectorAll('.compare-check.checked').forEach(b => b.classList.remove('checked'));
+    renderCompareBar();
+    toast('已清空对比');
+  });
+  bar.querySelector('[data-goto-cmp]').addEventListener('click', () => { location.hash = '#/compare'; });
+}
+
+/* ============ phone detail ============ */
+function renderPhoneDetail(id) {
+  const p = getPhone(id);
+  const app = $('#app');
+  if (!p) {
+    app.innerHTML = '<div class="detail-wrap"><div class="section">未找到该机型</div></div>';
+    return;
+  }
+  const inCmp = state.compare.some(x => String(x) === String(p.id));
+  const platBadge = p.platform === 'ios' ? '<span class="badge-ios">iOS</span>' : '<span class="badge-android">安卓</span>';
+  const at = p.antutu || {};
+  const gb6 = (p.geekbench && p.geekbench.gb6) || {};
+  const gb7 = (p.geekbench && p.geekbench.gb7) || {};
+  const body = p.body || {};
+  const disp = p.display || {};
+  const cam = p.camera || {};
+  const batt = p.battery || {};
+  const aud = p.audio || {};
+  const hap = p.haptics || {};
+  const soc = p.soc || {};
+
+  const srcs = (p.sources || []).map(s =>
+    `<li><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label)}</a></li>`
+  ).join('');
+
+  app.innerHTML = `
+  <div class="detail-wrap">
+    <div class="detail-hero">
+      <div class="detail-name">${escapeHtml(p.name)} ${platBadge}</div>
+      <div class="detail-sub">${escapeHtml(p.brand)} · 发布 ${escapeHtml(p.releaseDate || '未查证')} · 平台 ${p.platform === 'ios' ? 'iOS' : 'Android'}</div>
+      <div class="card-stats" style="margin-top:10px">
+        <button class="compare-bar-btn" id="cmpToggleDetail" style="font-size:13px">${inCmp ? '移出对比' : '加入对比'}</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>安兔兔跑分（${escapeHtml(at.period || '未查证')}）</h3>
+      <div class="kv"><span class="k">总分</span><span class="v">${fmtNum(at.total)}</span></div>
+      <div class="kv"><span class="k">CPU</span><span class="v">${fmtNum(at.cpu)}</span></div>
+      <div class="kv"><span class="k">GPU</span><span class="v">${fmtNum(at.gpu)}</span></div>
+      <div class="kv"><span class="k">MEM</span><span class="v">${fmtNum(at.mem)}</span></div>
+      <div class="kv"><span class="k">UX</span><span class="v">${fmtNum(at.ux)}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>Geekbench</h3>
+      <div class="kv"><span class="k">GB6 单核</span><span class="v">${fmtNum(gb6.single)}</span></div>
+      <div class="kv"><span class="k">GB6 多核</span><span class="v">${fmtNum(gb6.multi)}</span></div>
+      <div class="kv"><span class="k">GB7 单核</span><span class="v">${fmtNum(gb7.single)}</span></div>
+      <div class="kv"><span class="k">GB7 多核</span><span class="v">${fmtNum(gb7.multi)}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>SoC / 存储</h3>
+      <div class="kv"><span class="k">型号</span><span class="v">${escapeHtml(soc.name || '未查证')}</span></div>
+      <div class="kv"><span class="k">厂商</span><span class="v">${escapeHtml(soc.vendor || '未查证')}</span></div>
+      <div class="kv"><span class="k">别名</span><span class="v">${escapeHtml(soc.alias || '未查证')}</span></div>
+      <div class="kv"><span class="k">制程</span><span class="v">${escapeHtml(soc.process || '未查证')}</span></div>
+      <div class="kv"><span class="k">CPU 架构</span><span class="v">${escapeHtml(soc.cores || '未查证')}</span></div>
+      <div class="kv"><span class="k">GPU</span><span class="v">${escapeHtml(soc.gpu || '未查证')}</span></div>
+      <div class="kv"><span class="k">RAM</span><span class="v">${escapeHtml(p.ram || '未查证')}</span></div>
+      <div class="kv"><span class="k">存储</span><span class="v">${escapeHtml(p.storage || '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>尺寸 / 重量 / 材质</h3>
+      <div class="kv"><span class="k">高度</span><span class="v">${fmtNum(body.height)} mm</span></div>
+      <div class="kv"><span class="k">宽度</span><span class="v">${fmtNum(body.width)} mm</span></div>
+      <div class="kv"><span class="k">厚度</span><span class="v">${fmtNum(body.thickness)} mm</span></div>
+      <div class="kv"><span class="k">重量</span><span class="v">${fmtNum(body.weight)} g</span></div>
+      <div class="kv"><span class="k">中框</span><span class="v">${escapeHtml(body.frame || '未查证')}</span></div>
+      <div class="kv"><span class="k">后盖</span><span class="v">${escapeHtml(body.back || '未查证')}</span></div>
+      <div class="kv"><span class="k">防护</span><span class="v">${escapeHtml(body.ip || '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>屏幕</h3>
+      <div class="kv"><span class="k">尺寸</span><span class="v">${escapeHtml(disp.size || '未查证')}</span></div>
+      <div class="kv"><span class="k">技术</span><span class="v">${escapeHtml(disp.tech || '未查证')}</span></div>
+      <div class="kv"><span class="k">分辨率</span><span class="v">${escapeHtml(disp.resolution || '未查证')}</span></div>
+      <div class="kv"><span class="k">PPI</span><span class="v">${fmtNum(disp.ppi)}</span></div>
+      <div class="kv"><span class="k">刷新率</span><span class="v">${isNum(disp.refresh) ? disp.refresh + 'Hz' : '未查证'}</span></div>
+      <div class="kv"><span class="k">峰值亮度</span><span class="v">${escapeHtml(disp.brightness || '未查证')}</span></div>
+      <div class="kv"><span class="k">形态</span><span class="v">${escapeHtml(disp.shape || '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>影像</h3>
+      <div class="kv"><span class="k">主摄</span><span class="v">${escapeHtml(cam.main || '未查证')}</span></div>
+      <div class="kv"><span class="k">超广角</span><span class="v">${escapeHtml(cam.ultrawide || '未查证')}</span></div>
+      <div class="kv"><span class="k">长焦</span><span class="v">${escapeHtml(cam.tele || '未查证')}</span></div>
+      <div class="kv"><span class="k">前摄</span><span class="v">${escapeHtml(cam.front || '未查证')}</span></div>
+      <div class="kv"><span class="k">特性</span><span class="v">${escapeHtml(cam.features || '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>电池 / 充电</h3>
+      <div class="kv"><span class="k">容量</span><span class="v">${isNum(batt.capacity) ? batt.capacity + ' mAh' : '未查证'}</span></div>
+      <div class="kv"><span class="k">有线</span><span class="v">${isNum(batt.wired) ? batt.wired + 'W' : '未查证'}</span></div>
+      <div class="kv"><span class="k">无线</span><span class="v">${batt.wireless === 0 ? '不支持' : (isNum(batt.wireless) ? batt.wireless + 'W' : '未查证')}</span></div>
+      <div class="kv"><span class="k">反向</span><span class="v">${batt.reverse === 0 ? '不支持' : (batt.reverse ? escapeHtml(String(batt.reverse)) : '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>音频 / 马达</h3>
+      <div class="kv"><span class="k">扬声器</span><span class="v">${escapeHtml(aud.speakers || '未查证')}</span></div>
+      <div class="kv"><span class="k">布局</span><span class="v">${escapeHtml(aud.layout || '未查证')}</span></div>
+      <div class="kv"><span class="k">特性</span><span class="v">${escapeHtml(aud.features || '未查证')}</span></div>
+      <div class="kv"><span class="k">耳机孔</span><span class="v">${aud.jack === true ? '有 3.5mm' : (aud.jack === false ? '无' : '未查证')}</span></div>
+      <div class="kv"><span class="k">马达</span><span class="v">${escapeHtml(hap.motor || '未查证')}</span></div>
+      <div class="kv"><span class="k">马达详情</span><span class="v">${escapeHtml(hap.detail || '未查证')}</span></div>
+    </div>
+
+    <div class="section">
+      <h3>特色</h3>
+      ${(p.features && p.features.length) ? '<ul>' + p.features.map(f => `<li>${escapeHtml(f)}</li>`).join('') + '</ul>' : '<div class="kv"><span class="v">未查证</span></div>'}
+    </div>
+
+    ${p.notes ? `<div class="note-box">备注：${escapeHtml(p.notes)}</div>` : ''}
+
+    <div class="section">
+      <h3>数据来源</h3>
+      <ul class="src-list">${srcs || '<li>未查证</li>'}</ul>
+    </div>
+  </div>
+  `;
+  $('#cmpToggleDetail').addEventListener('click', () => {
+    toggleCompare(p.id);
+    $('#cmpToggleDetail').textContent = state.compare.some(x => String(x) === String(p.id)) ? '移出对比' : '加入对比';
+  });
+}
+
+/* ============ compare page ============ */
+function renderCompare() {
+  const app = $('#app');
+  const phones = state.compare.map(getPhone).filter(Boolean);
+  if (phones.length === 0) {
+    app.innerHTML = `<div class="detail-wrap"><div class="section">
+      <p>尚未选择对比机型。回到手机榜，点击机型右侧的圆形勾选按钮加入对比（最多 3 款）。</p>
+      <p><button class="compare-bar-btn" id="goList">去选择</button></p>
+    </div></div>`;
+    $('#goList').addEventListener('click', () => { location.hash = '#/'; });
+    return;
+  }
+  const hasAndroid = phones.some(p => p.platform === 'android');
+  const hasIos = phones.some(p => p.platform === 'ios');
+  const crossWarn = (hasAndroid && hasIos) ? `
+    <div class="warn-banner">
+      注意：当前对比机型跨安卓 / iOS 平台。安兔兔安卓榜与 iOS 榜为不同榜单、不同机型基数；
+      Geekbench 6 与 Geekbench 7 的工具版本与计分口径也不同。分数之间不宜直接横向比较，仅供同平台/同版本内参考。
+    </div>` : '';
+
+  // dimension rows: [label, getVal(phone), direction('max'|'min'|null), unit]
+  const rows = [
+    ['dim', '基本信息', null, null],
+    ['发布日期', p => p.releaseDate || '未查证', null, ''],
+    ['平台', p => p.platform === 'ios' ? 'iOS' : 'Android', null, ''],
+    ['SoC', p => (p.soc && p.soc.name) || '未查证', null, ''],
+    ['制程', p => (p.soc && p.soc.process) || '未查证', null, ''],
+    ['RAM', p => p.ram || '未查证', null, ''],
+    ['dim', '安兔兔', null, null],
+    ['CPU', p => p.antutu.cpu, 'max', ''],
+    ['GPU', p => p.antutu.gpu, 'max', ''],
+    ['MEM', p => p.antutu.mem, 'max', ''],
+    ['UX', p => p.antutu.ux, 'max', ''],
+    ['总分', p => p.antutu.total, 'max', ''],
+    ['跑分期间', p => p.antutu.period || '未查证', null, ''],
+    ['dim', 'Geekbench', null, null],
+    ['GB6 单核', p => p.geekbench.gb6.single, 'max', ''],
+    ['GB6 多核', p => p.geekbench.gb6.multi, 'max', ''],
+    ['GB7 单核', p => p.geekbench.gb7.single, 'max', ''],
+    ['GB7 多核', p => p.geekbench.gb7.multi, 'max', ''],
+    ['dim', '机身', null, null],
+    ['高', p => isNum(p.body.height) ? p.body.height + ' mm' : '未查证', null, ''],
+    ['宽', p => isNum(p.body.width) ? p.body.width + ' mm' : '未查证', null, ''],
+    ['厚', p => isNum(p.body.thickness) ? p.body.thickness + ' mm' : '未查证', null, ''],
+    ['重量', p => p.body.weight, 'min', ' g'],
+    ['防护', p => p.body.ip || '未查证', null, ''],
+    ['dim', '屏幕', null, null],
+    ['尺寸', p => String(p.display.size || '未查证'), null, ''],
+    ['技术', p => p.display.tech || '未查证', null, ''],
+    ['分辨率', p => p.display.resolution || '未查证', null, ''],
+    ['刷新率', p => p.display.refresh, 'max', ' Hz'],
+    ['dim', '影像', null, null],
+    ['主摄', p => p.camera.main || '未查证', null, ''],
+    ['超广角', p => p.camera.ultrawide || '未查证', null, ''],
+    ['长焦', p => p.camera.tele || '未查证', null, ''],
+    ['前摄', p => p.camera.front || '未查证', null, ''],
+    ['dim', '马达 / 扬声器', null, null],
+    ['振动马达', p => p.haptics.motor || '未查证', null, ''],
+    ['扬声器', p => p.audio.speakers || '未查证', null, ''],
+    ['dim', '电池 / 充电', null, null],
+    ['电池容量', p => p.battery.capacity, 'max', ' mAh'],
+    ['有线充电', p => p.battery.wired, 'max', ' W'],
+    ['无线充电', p => p.battery.wireless === 0 ? '不支持' : (isNum(p.battery.wireless) ? p.battery.wireless + ' W' : '未查证'), null, ''],
+    ['反向充电', p => p.battery.reverse === 0 ? '不支持' : (p.battery.reverse ? '支持' : '未查证'), null, ''],
+    ['dim', '特色', null, null],
+    ['特色', p => (p.features || []).join('、') || '未查证', null, ''],
+  ];
+
+  function cellHtml(rowDef, p) {
+    const [label, getter, dir, unit] = rowDef;
+    if (rowDef[0] === 'dim') return '';
+    const v = getter(p);
+    if (v === null || v === undefined || v === '' || v === '未查证') return '未查证';
+    if (isNum(v)) return fmtNum(v) + (unit || '');
+    return escapeHtml(String(v));
+  }
+  function bestIdx(rowDef) {
+    const [, getter, dir] = rowDef;
+    if (!dir) return -1;
+    const vals = phones.map(p => getter(p));
+    const nums = vals.map(v => isNum(v) ? v : null);
+    if (nums.every(v => v === null)) return -1;
+    let best = -1;
+    for (let i = 0; i < nums.length; i++) {
+      if (nums[i] === null) continue;
+      if (best === -1) best = i;
+      else if (dir === 'max' && nums[i] > nums[best]) best = i;
+      else if (dir === 'min' && nums[i] < nums[best]) best = i;
+    }
+    return best;
+  }
+
+  const headCells = phones.map(p => `
+    <th>
+      <div>${escapeHtml(p.name)}</div>
+      <div style="font-weight:400;font-size:11px;color:var(--label-3);margin-top:2px">
+        ${escapeHtml(p.brand)} · ${p.platform === 'ios' ? 'iOS' : 'Android'}
+      </div>
+      <div style="margin-top:6px">
+        <button class="chip" data-remove="${p.id}" style="font-size:11px;padding:2px 8px">移除</button>
+      </div>
+    </th>`).join('');
+
+  const bodyRows = rows.map(r => {
+    if (r[0] === 'dim') {
+      return `<tr class="dim-row"><td colspan="${phones.length + 1}">${escapeHtml(r[1])}</td></tr>`;
+    }
+    const bi = bestIdx(r);
+    const cells = phones.map((p, i) => {
+      const cls = (i === bi) ? ' class="better"' : '';
+      return `<td${cls}>${cellHtml(r, p)}</td>`;
+    }).join('');
+    return `<tr><td class="dim">${escapeHtml(r[0])}</td>${cells}</tr>`;
+  }).join('');
+
+  app.innerHTML = `
+  <div class="detail-wrap">
+    ${crossWarn}
+    <div style="margin-bottom:10px;display:flex;gap:8px">
+      <button class="chip" id="cmpBack">返回榜单</button>
+      <button class="chip" id="cmpClearAll">清空全部</button>
+    </div>
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead><tr><th style="width:22%">维度</th>${headCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--label-3);margin-top:10px">
+      绿色加粗为该维度中更优者（重量为更轻更优，其余数值为更大更优）；文本维度不做优劣判定。
+    </p>
+  </div>
+  `;
+  app.querySelectorAll('[data-remove]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-remove');
+      state.compare = state.compare.filter(x => String(x) !== String(id));
+      renderCompare(); renderCompareBar();
+      toast('已移除一款');
+    });
+  });
+  $('#cmpBack').addEventListener('click', () => { location.hash = '#/'; });
+  $('#cmpClearAll').addEventListener('click', () => {
+    state.compare = [];
+    renderCompare(); renderCompareBar();
+    toast('已清空对比');
+  });
+}
+
+/* ============ about ============ */
+function renderAbout() {
+  const app = $('#app');
+  const mlist = DATA.methodology.map(m => `<li>${escapeHtml(m)}</li>`).join('');
+  const slist = DATA.sources.map(s => `<li><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label)}</a></li>`).join('');
+  app.innerHTML = `
+  <div class="detail-wrap about">
+    <div class="section">
+      <h3>安装到 iPhone 主屏幕（PWA）</h3>
+      <p>本应用为离线 PWA（渐进式网页应用），在 iPhone 上通过 Safari「添加到主屏幕」安装：</p>
+      <ol>
+        <li><span class="step-num">1</span>用 <b>Safari</b>（必须是 Safari，微信/Chrome 内打开无法安装）打开本应用的 HTTPS 网址。</li>
+        <li><span class="step-num">2</span>点击底部 <b>分享</b> 按钮（方框向上箭头图标）。</li>
+        <li><span class="step-num">3</span>在菜单中找到 <b>添加到主屏幕</b>，点击右上角 <b>添加</b>。</li>
+        <li><span class="step-num">4</span>主屏幕出现「性能排行」图标，点开后全屏运行，无 Safari 地址栏。</li>
+      </ol>
+      <div class="note-box">
+        注意：iOS Safari 仅在 <b>HTTPS</b>（或 localhost）地址下才会注册 service worker 并支持离线安装。
+        直接双击 index.html 以 <code>file://</code> 打开时，service worker 与离线缓存不可用——但 data.js 经 &lt;script&gt; 标签加载，
+        普通浏览、搜索、筛选、对比均可在 file:// 下正常使用，仅下次启动不联网时无法打开已缓存页面。
+        推荐托管到 GitHub Pages / Cloudflare Pages 等任意静态 HTTPS 服务后再安装。
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>覆盖范围</h3>
+      <ul>
+        <li>机型共 <b>${DATA.counts.total}</b> 款：安卓 <b>${DATA.counts.android}</b> 款（安兔兔 2026 年 8 月安卓性能榜全量）；iPhone <b>${DATA.counts.ios}</b> 款（其中 31 款有安兔兔 iOS 榜成绩，早期机型跑分留空；含 2026-09 发布的 iPhone 18 Pro / 18 Pro Max / iPhone Duo）。</li>
+        <li>芯片共 <b>${DATA.chips.length}</b> 款：手机 SoC ${DATA.chips.filter(c=>c.category==='phone').length} / Apple A 系列 ${DATA.chips.filter(c=>c.category==='apple-a').length} / Apple M 系列 ${DATA.chips.filter(c=>c.category==='apple-m').length}（M 系列适用 Mac/iPad，非手机芯片）。</li>
+        <li>数据生成时间：${escapeHtml(DATA.generatedAt)}。</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>口径说明</h3>
+      <ol>${mlist}</ol>
+      <div class="note-box">
+        本数据集为人工整理的快照，<b>不暗示全网无遗漏</b>：部分早期机型、小众品牌、未上市工程机可能未收录；
+        标注「未查证」的字段表示未找到可靠来源，未做推测或编造。跑分随厂商系统更新波动，仅供参考，不构成购买建议。
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>主要数据来源</h3>
+      <ul class="src-list">${slist}</ul>
+      <p style="margin-top:8px">SoC 榜来源：<a href="${escapeHtml(DATA.socSource.source)}" target="_blank" rel="noopener">安兔兔 SoC 天梯榜（${escapeHtml(DATA.socSource.period)}）</a></p>
+    </div>
+  </div>
+  `;
+}
+
+/* ============ SW registration ============ */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((e) => {
+      console.warn('SW registration failed:', e);
+    });
+  });
+} else {
+  console.info('Service worker skipped (file:// or unsupported). Offline install requires HTTPS hosting.');
+}
+
+/* ============ boot ============ */
+window.addEventListener('hashchange', render);
+render();
+
+
+</script>
+</body>
+</html>
+
