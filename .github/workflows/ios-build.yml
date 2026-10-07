@@ -1,0 +1,76 @@
+name: Build iPhone IPA
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'PhoneRank/**'
+      - 'PhoneRankTests/**'
+      - 'project.yml'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    paths:
+      - 'PhoneRank/**'
+      - 'PhoneRankTests/**'
+      - 'project.yml'
+      - '.github/workflows/ios-build.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+        working-directory: PhoneRank
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check Xcode and generate project
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -showsdks
+          brew install xcodegen
+          xcodegen --version
+          xcodegen generate
+          mkdir -p build/artifacts
+      - name: Run unit tests on an available iPhone simulator
+        run: |
+          set -euo pipefail
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import sys,json; d=json.load(sys.stdin)["devices"]; ids=[v["udid"] for k,vs in d.items() if "iOS-26" in k for v in vs if v.get("isAvailable") and "iPhone" in v["name"]]; assert ids,"No available iOS 26 iPhone simulator"; print(ids[0])')
+          xcodebuild -project PhoneRank.xcodeproj -scheme PhoneRank \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -resultBundlePath build/artifacts/Tests.xcresult \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee build/artifacts/tests.log
+      - name: Build an unsigned device app
+        run: |
+          set -euo pipefail
+          xcodebuild -project PhoneRank.xcodeproj -scheme PhoneRank \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            build 2>&1 | tee build/artifacts/build.log
+      - name: Package IPA for local signing
+        run: |
+          set -euo pipefail
+          APP=build/device/Build/Products/Release-iphoneos/PhoneRank.app
+          test -f "$APP/PhoneRank"
+          mkdir -p build/package/Payload
+          cp -R "$APP" build/package/Payload/
+          (cd build/package && zip -qry ../artifacts/PhoneRank-unsigned.ipa Payload)
+          shasum -a 256 build/artifacts/PhoneRank-unsigned.ipa > build/artifacts/SHA256.txt
+          echo 'Unsigned device build. Sign locally before installation. Requires iOS 26+.' > build/artifacts/READ-ME.txt
+          echo 'Download PhoneRank-unsigned.ipa from Artifacts and sign it locally using your own account.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload installation package and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhoneRank-iPhone-${{ github.run_number }}
+          path: PhoneRank/build/artifacts/
+          if-no-files-found: warn
+          retention-days: 7
