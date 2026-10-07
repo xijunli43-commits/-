@@ -73,17 +73,18 @@ function readFields() {
 function setEditorMode(mode) {
   try{if(mode===editorMode)return;if(mode==='json')$('#jsonEditor').value=json(readFields());else{editing.data=JSON.parse($('#jsonEditor').value);formFields(editing.data);}editorMode=mode;$('#fieldEditor').hidden=mode!=='form';$('#jsonEditor').hidden=mode!=='json';$('#formMode').classList.toggle('active',mode==='form');$('#jsonMode').classList.toggle('active',mode==='json');}catch(e){$('#editorError').textContent=e.message;}
 }
-async function openEditor(id) {
-  const kind=view;
+async function openEditor(id, candidate) {
+  const kind=candidate ? candidate.kind : view;
   if(id!==undefined)editing={...(await api(`/admin/api/records/${kind}/${encodeURIComponent(id)}`)),kind};
   else editing={kind,version:0,data:kind==='phones'?{id:crypto.randomUUID(),name:'新手机',brand:'',platform:'android',soc:{name:'',alias:''},antutu:{total:null,cpu:null,gpu:null,mem:null,ux:null,period:'',source:''},geekbench:{gb6:{single:null,multi:null,source:null},gb7:{single:null,multi:null,source:null}},body:{weight:null},display:{size:null,refresh:null},battery:{capacity:null,wired:null,wireless:null},sources:[],notes:''}:{id:crypto.randomUUID(),name:'新芯片',vendor:'',category:'phone',status:'未查证',process:'',antutu:{total:null,cpu:null,gpu:null},gb6:{single:null,multi:null,samples:0,sources:[]},gb7:{single:null,multi:null,samples:0,sources:[]},sources:[],notes:''}};
+  if(candidate){editing.data.name=candidate.name;editing.data.sources=[{label:candidate.source,url:candidate.url}];editing.data.notes=candidate.note;if(kind==='phones' && candidate.platform)editing.data.platform=candidate.platform;editing.data={...editing.data,...candidate.patch};}
   editorMode='form';$('#fieldEditor').hidden=false;$('#jsonEditor').hidden=true;$('#formMode').classList.add('active');$('#jsonMode').classList.remove('active');
   $('#editorTitle').textContent=editing.version?'编辑 · '+editing.data.name:'新建资料';$('#editorError').textContent='';$('#deleteRecord').hidden=!editing.version;formFields(editing.data);$('#jsonEditor').value=json(editing.data);$('#editor').showModal();
 }
 function renderCandidates() {
   const box=$('#candidates');box.replaceChildren();const pending=state.candidates.filter(c=>c.status==='pending');
   if(!pending.length)box.append(el('p','没有待审核项。抓取或导入公开页面后，候选成绩会出现在这里。','surface'));
-  for(const c of pending){const card=el('div',undefined,'candidate surface'),text=el('div');text.append(el('span',c.data.source==='antutu'?'安兔兔':'Geekbench','badge'),el('h3',c.data.name),el('p',c.data.note,'helper'));const review=el('button','审核匹配','secondary');review.addEventListener('click',()=>openReview(c).catch(e=>message(e.message)));const reject=el('button','忽略','danger');reject.addEventListener('click',async()=>{try{await api('/admin/api/reject',{id:c.id});await refresh();}catch(e){message(e.message);}});card.append(text,review,reject);box.append(card);}
+  for(const c of pending){const card=el('div',undefined,'candidate surface'),text=el('div');text.append(el('span',c.data.source==='antutu'?'安兔兔':'Geekbench','badge'),el('h3',c.data.name),el('p',c.data.note,'helper'));const review=el('button','审核匹配','secondary');review.addEventListener('click',()=>openReview(c).catch(e=>message(e.message)));const create=el('button','新建此型号草稿','secondary');create.addEventListener('click',()=>openEditor(undefined,c.data).catch(e=>message(e.message)));text.append(create);const reject=el('button','忽略','danger');reject.addEventListener('click',async()=>{try{await api('/admin/api/reject',{id:c.id});await refresh();}catch(e){message(e.message);}});card.append(text,review,reject);box.append(card);}
 }
 async function openReview(candidate) {
   reviewing=candidate;$('#reviewNote').textContent=candidate.data.name+' · '+candidate.data.note;$('#targetKind').value=candidate.data.kind;$('#reviewError').textContent='';fillTargets();$('#review').showModal();await updateDiff();
@@ -112,8 +113,10 @@ $('#deleteRecord').addEventListener('click',async()=>{if(!confirm('删除此资�
 $('#publish').addEventListener('click',async()=>{if(!confirm('将当前全部草稿发布给应用？已有发布版本会保存为快照。'))return;try{await api('/admin/api/publish',{});await refresh();message('发布成功。应用可获取最新数据。');}catch(e){message(e.message);}});
 $('#source').addEventListener('change',()=>{$('#sourceURL').value=$('#source').value==='antutu'?'https://www.antutu.com/ranking':'';});
 $('#htmlFile').addEventListener('change',async()=>{const file=$('#htmlFile').files[0];if(file){if(file.size>2000000){message('HTML 文件需小于 2 MB。');return;}$('#sourceHTML').value=await file.text();}});
-$('#collect').addEventListener('click',async()=>{const button=$('#collect');button.disabled=true;button.textContent='采集中…';try{const result=await api('/admin/api/collect',{source:$('#source').value,url:$('#sourceURL').value,html:$('#sourceHTML').value||null});await refresh();message(`已创建 ${result.candidates.length} 个待审核项。`);}catch(e){message(e.message);}finally{button.disabled=false;button.textContent='采集到待审核区';}});
+$('#collect').addEventListener('click',async()=>{const button=$('#collect');button.disabled=true;button.textContent='采集中…';try{const result=await api('/admin/api/collect',{source:$('#source').value,url:$('#sourceURL').value,html:$('#sourceHTML').value||null,query:$('#onlineQuery').value});await refresh();message(`已创建 ${result.candidates.length} 个待审核项。`);}catch(e){message(e.message);}finally{button.disabled=false;button.textContent='采集到待审核区';}});
 $('#refreshImports').addEventListener('click',()=>refresh().catch(e=>message(e.message)));
 $('#targetKind').addEventListener('change',()=>{fillTargets();updateDiff();});$('#targetRecord').addEventListener('change',updateDiff);
 $('#applyCandidate').addEventListener('click',async()=>{const kind=$('#targetKind').value,id=$('#targetRecord').value;try{if(!id||reviewing.targetID!==id||reviewing.targetKind!==kind)throw new Error('请先选择目标并等待当前成绩加载。');await api('/admin/api/apply',{candidate_id:reviewing.id,kind,target_id:id,version:reviewing.target.version});$('#review').close();await refresh();message('成绩已应用到草稿。');}catch(e){$('#reviewError').textContent=e.message;}});
 refresh().catch(e=>message(e.message));
+
+$('#onlineQuery').addEventListener('input',()=>{const q=$('#onlineQuery').value.trim();$('#geekbenchSearch').href='https://browser.geekbench.com/search?q='+encodeURIComponent(q);$('#antutuSearch').href='https://www.bing.com/search?q='+encodeURIComponent('site:antutu.com '+q);});
