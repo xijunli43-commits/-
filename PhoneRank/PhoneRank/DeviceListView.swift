@@ -26,6 +26,27 @@ struct DeviceListView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     header
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField(isChip ? "搜索芯片、厂商、别名" : "搜索手机、品牌、芯片", text: $query)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        if !query.isEmpty {
+                            Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                                .accessibilityLabel("清空搜索").frame(width: 44, height: 44)
+                        }
+                    }.padding(.horizontal, 12).frame(minHeight: 48)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("网上查成绩").font(.subheadline.bold())
+                            HStack {
+                                if let url = onlineURL(geekbench: true) { Link("Geekbench 搜索 ↗", destination: url) }
+                                if let url = onlineURL(geekbench: false) { Link("安兔兔资料搜索 ↗", destination: url) }
+                            }.font(.subheadline)
+                            Text("打开网站查看；新增资料与成绩导入请在电脑后台审核后发布。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(.vertical, 8)
+                    }
                     filters
                     HStack {
                         Text("\(records.count) \(isChip ? "款芯片" : "款手机")").font(.subheadline)
@@ -61,7 +82,6 @@ struct DeviceListView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle(title)
-            .searchable(text: $query, prompt: isChip ? "搜索芯片、厂商" : "搜索手机、品牌、芯片")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -73,6 +93,13 @@ struct DeviceListView: View {
             }
             .alert("最多对比 3 款手机", isPresented: $showLimit) { Button("知道了", role: .cancel) {} } message: { Text("请先在对比页移除一款。") }
         }
+    }
+
+    private func onlineURL(geekbench: Bool) -> URL? {
+        var components = URLComponents(string: geekbench ? "https://browser.geekbench.com/search" : "https://www.bing.com/search")
+        let keyword = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        components?.queryItems = [URLQueryItem(name: "q", value: geekbench ? keyword : "site:antutu.com " + keyword)]
+        return components?.url
     }
 
     private var header: some View {
